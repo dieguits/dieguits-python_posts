@@ -1,7 +1,9 @@
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase, Session
+from dotenv import load_dotenv
 
+load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./blog.db")
 print("Connected to: ", DATABASE_URL)
