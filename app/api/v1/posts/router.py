@@ -7,20 +7,26 @@ from app.core.db import get_db
 from .schemas import (PostPublic, PaginationPost,
                       PostCreate, PostUpdate, PostSummary)
 from ..posts.repository import PostRepository
-
-
+from app.core.security import oauth2_scheme, get_current_user
 
 router = APIRouter(prefix="/posts", tags=["posts"])
+
+def get_fake_user():
+    return {"username": "diego", "role": "admin"}
+
+@router.get("/me")
+def read_me(user:dict = Depends(get_fake_user)):
+    return {"user": user}
 
 @router.get("", response_model=PaginationPost)
 def list_posts(
     text: Optional[str] = Query(
-        default = None, 
+        default = None,
         deprecated=True,
         description = "Obsolete Param, use query instead."
     ),
     query: Optional[str] = Query(
-            default = None, 
+            default = None,
             description = "Text to search on title",
             alias="search",
             min_length=3,
@@ -44,7 +50,7 @@ def list_posts(
     db: Session = Depends(get_db)
     ):
     
-    repository = PostRepository(db) 
+    repository = PostRepository(db)
     query = query or text
     
     total, items = repository.search(query, order_by, direction, page, per_page)
@@ -111,7 +117,9 @@ def get_post(post_id: int = Path(
           response_model=PostPublic, 
           response_description="Post was created",
           status_code=status.HTTP_201_CREATED)
-def create_post(post: PostCreate, db: Session = Depends(get_db)):
+def create_post(post: PostCreate, 
+                db: Session = Depends(get_db), 
+                user=Depends(get_current_user)):
     
     repository = PostRepository(db)
         
@@ -119,7 +127,7 @@ def create_post(post: PostCreate, db: Session = Depends(get_db)):
         new_post = repository.create_post(
             title=post.title, 
             content=post.content, 
-            author=post.author.model_dump() if post.author else None,
+            author=user,
             tags=[tag.model_dump() for tag in post.tags]
             )
         db.commit()
@@ -171,3 +179,7 @@ def delete_post(post_id: int, db: Session = Depends(get_db)):
     except SQLAlchemyError:
         db.rollback()
         raise HTTPException(status_code=500, detail="Error deleting the post")
+
+@router.get("/secure")
+def secure_endpoint(token:str = Depends(oauth2_scheme)):
+    return {"message": "Access with token", "token_received": token}

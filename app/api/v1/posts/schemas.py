@@ -47,7 +47,7 @@ class PostCreate(BaseModel):
         examples=["This is a content valid for this field"]
     )
     tags: List[Tag] = Field(default_factory=list)
-    author: Optional[Author] = None
+    # author: Optional[Author] = None
     
     @field_validator("title")
     @classmethod # to manipulate at class level
