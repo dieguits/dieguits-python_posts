@@ -23,7 +23,7 @@ credentials_exc = HTTPException(
 def raise_expired_token():
     return HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Token expirado",
+        detail="Token expired",
         headers={"WWW-Authenticate": "Bearer"}
     )
 
@@ -47,13 +47,9 @@ def decode_token(token: str) -> dict:
     payload = jwt.decode(jwt=token, key=SECRET_KEY, algorithms=[ALGORITHM])
     return payload
  
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    credentials_exc = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                                    detail="No Authenticated",
-                                    headers={"WWW-Authenticate": "Bearer"})
+async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     
     try:
-        print("here we are arriving:::::::::::::::::::: ")
         payload = decode_token(token)
         sub: Optional[str] = payload.get("sub")
         username: Optional[str] = payload.get("username")
@@ -62,8 +58,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         
         return {"email": sub, "username": username}
     except ExpiredSignatureError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, 
-                            detail="Token Expired",
-                            headers={"WWW-Authenticate": "Bearer"})
+        raise raise_expired_token()
     except InvalidTokenError:
         raise credentials_exc
