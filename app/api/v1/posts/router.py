@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Query, Depends, Path, HTTPException, status
+from fastapi import APIRouter, Query, Depends, Path, HTTPException, status, UploadFile, File
 from math import ceil
-from typing import Optional, List, Union, Literal
+from typing import Optional, List, Union, Literal, Annotated
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from app.core.db import get_db
@@ -8,8 +8,24 @@ from .schemas import (PostPublic, PaginationPost,
                       PostCreate, PostUpdate, PostSummary)
 from ..posts.repository import PostRepository
 from app.core.security import oauth2_scheme, get_current_user
+from app.services.file_storage import save_uploaded_file
+# import time
+# import asyncio
+# import threading
 
 router = APIRouter(prefix="/posts", tags=["posts"])
+
+# @router.get("/sync")
+# def sync_endpoint():
+#     print("SYNC threading: ", threading.current_thread().name)
+#     time.sleep(8)
+#     return {"message": "sync function finalize"}
+
+# @router.get("/async")
+# async def async_endpoint():
+#     print("ASYNC threading: ", threading.current_thread().name)
+#     await asyncio.sleep(8)
+#     return {"message": "async function finalize"}
 
 def get_fake_user():
     return {"username": "diego", "role": "admin"}
@@ -117,18 +133,26 @@ def get_post(post_id: int = Path(
           response_model=PostPublic, 
           response_description="Post was created",
           status_code=status.HTTP_201_CREATED)
-def create_post(post: PostCreate, 
+def create_post(post: Annotated[PostCreate, Depends(PostCreate.as_form)], 
+                image:Optional[UploadFile] = File(None),
                 db: Session = Depends(get_db), 
                 user=Depends(get_current_user)):
     
     repository = PostRepository(db)
-        
+    saved = None
+    
     try:
+        if image is not None:
+            saved = save_uploaded_file(image)
+        
+        image_url = saved["url"] if saved else None
+            
         new_post = repository.create_post(
             title=post.title, 
             content=post.content, 
             author=user,
-            tags=[tag.model_dump() for tag in post.tags]
+            tags=[tag.model_dump() for tag in post.tags],
+            image_url=image_url
             )
         db.commit()
         db.refresh(new_post)

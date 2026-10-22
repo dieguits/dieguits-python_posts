@@ -9,3 +9,5 @@ env/
 .env
 
 .vscode
+
+app/media

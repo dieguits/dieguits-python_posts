@@ -1,12 +1,12 @@
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Annotated
 from pydantic import BaseModel, Field, field_validator, EmailStr, ConfigDict
-
+from fastapi import Form
 
 class Tag(BaseModel):
     name: str = Field(
         ...,
         min_length=2,
-        max_length=20,
+        max_length=60,
         description="Tag name"
         )
     
@@ -29,6 +29,7 @@ class PostBase(BaseModel):
     # This creates an empty list
     tags: Optional[List[Tag]] = Field(default_factory=list)
     author: Optional[Author] = None
+    image_url: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True)
     
@@ -57,6 +58,21 @@ class PostCreate(BaseModel):
             if val.lower() in value.lower():
                 raise ValueError(f"The title can not contain this value: ({val})")
         return value
+    
+    @classmethod
+    def as_form(
+        cls,
+        title: Annotated[str, Form(min_length=3)],
+        content: Annotated[str, Form(min_length=10)],
+        tags: Annotated[Optional[List[str]], Form()] = None,
+    ):
+        # tag_objs = []
+        # for t in tags:
+        #     print(f"The tags coming here::::::: {t}")
+        #     tag_objs.append(t)
+        tag_objs = [Tag(name=t) for t in (tags or [])]
+        print("The tags converted:::::: ", tag_objs)
+        return cls(title=title, content=content, tags=tag_objs)
 
 class PostUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=4, max_length=50)

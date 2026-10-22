@@ -14,7 +14,7 @@ post_tags = Table(
     "post_tags",
     Base.metadata,
     Column("post_id", ForeignKey("posts.id", ondelete="CASCADE"), primary_key=True),
-    Column("tags_id", ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True)
+    Column("tag_id", ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True)
 )
 
 class PostORM(Base):
@@ -24,6 +24,8 @@ class PostORM(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     title: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    image_url: Mapped[str] = mapped_column(String(350), nullable=True)
+    
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     
     author_id: Mapped[Optional[int]] = mapped_column(ForeignKey("authors.id"))
