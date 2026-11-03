@@ -1,3 +1,5 @@
+from locale import normalize
+
 from fastapi import HTTPException
 from typing import Optional, List, Tuple
 from sqlalchemy import select, func
@@ -66,7 +68,7 @@ class PostRepository:
         return self.db.execute(post_list).scalars().all()
     
     def ensure_author(self, name:str, email:str) -> AuthorORM:
-        
+        print(f"THIS IS THE AUTHOR VARIABLES COMING HERE::::::::::: {name} - {email}")
         author_obj = self.db.execute(
             select(AuthorORM).where(AuthorORM.email == email)
         ).scalar_one_or_none()
@@ -82,8 +84,12 @@ class PostRepository:
         return author_obj
     
     def ensure_tags(self, name:str) -> TagORM:
+        
+        normalize = name.strip().lower()
+        
         tag_obj = self.db.execute(
-            select(TagORM).where(TagORM.name.ilike(name))
+            # select(TagORM).where(TagORM.name.ilike(name)) # this is for Postgres
+            select(TagORM).where(func.lower(TagORM.name) == normalize) # this is for SQLite
         ).scalar_one_or_none()
         
         if tag_obj:
@@ -100,16 +106,23 @@ class PostRepository:
         title:str, 
         content:str, 
         author:Optional[dict], 
-        tags: List[dict]) -> PostORM:
+        tags: List[dict],
+        image_url: str) -> PostORM:
         
         author_obj = None
         if author:
-            author_obj = self.ensure_author(author['name'], author['email'])
+            # author_obj = self.ensure_author(author['full_name'], author['email'])
+            author_obj = self.ensure_author(author.full_name, author.email)
         
-        post = PostORM(title=title, content=content, author=author_obj)
+        post = PostORM(title=title, content=content, image_url=image_url, author=author_obj)
         
-        for tag in tags:
-            tag_obj = self.ensure_tags(tag['name'])
+        names = tags[0]["name"].split(",")
+        for name in names:
+            name = name.strip().lower()
+            if not name:
+                continue
+            
+            tag_obj = self.ensure_tags(name)
             post.tags.append(tag_obj)
         
         self.db.add(post)
