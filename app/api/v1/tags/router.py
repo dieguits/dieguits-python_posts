@@ -8,7 +8,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.api.v1.tags.repository import TagRepository
 from app.api.v1.tags.schemas import TagCreate, TagPublic, TagUpdate
 from app.core.db import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_editor, require_user, require_admin
+from app.models.user import User
 
 
 router = APIRouter(prefix="/tags", tags=["tags"])
@@ -36,7 +37,8 @@ def list_tags(
 @router.post("", response_model=TagPublic, 
              response_description="Tag Created", 
              status_code=status.HTTP_201_CREATED)
-def create_tag(tag: TagCreate, db: Session = Depends(get_db), user= Depends(get_current_user)):
+def create_tag(tag: TagCreate, db: Session = Depends(get_db), 
+               _editor: User = Depends(require_editor)):
     repository = TagRepository(db)
     
     try:
@@ -55,7 +57,7 @@ def update_tag(
     tag_id: int, 
     data: TagUpdate, 
     db: Session = Depends(get_db),
-    user=Depends(get_current_user)
+    _editor: User = Depends(require_editor)
     ):
     
     repository = TagRepository(db)
@@ -76,7 +78,7 @@ def update_tag(
         
 @router.delete("/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_tag(tag_id: int, db: Session = Depends(get_db),
-               user=Depends(get_current_user)):
+               _editor: User = Depends(require_admin)):
     
     repository = TagRepository(db)
     # tag = repository.get_tag_by_id(tag_id)
@@ -98,10 +100,9 @@ def delete_tag(tag_id: int, db: Session = Depends(get_db),
 @router.get("/popular/top")
 def get_most_popular_tag(
     db: Session = Depends(get_db),
-    user= Depends(get_current_user)
+    _editor: User = Depends(require_user)
 ):
     repository = TagRepository(db)
-    print("coming here to the router:::::::: ")
     row = repository.most_popular_tag()
     if not row:
         raise HTTPException(

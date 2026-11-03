@@ -4,10 +4,11 @@ from typing import Optional, List, Union, Literal, Annotated
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from app.core.db import get_db
+from app.models.user import User
 from .schemas import (PostPublic, PaginationPost,
                       PostCreate, PostUpdate, PostSummary)
 from ..posts.repository import PostRepository
-from app.core.security import oauth2_scheme, get_current_user
+from app.core.security import oauth2_scheme, get_current_user, require_user, require_admin, require_editor
 from app.services.file_storage import save_uploaded_file
 # import time
 # import asyncio
@@ -136,7 +137,7 @@ def get_post(post_id: int = Path(
 def create_post(post: Annotated[PostCreate, Depends(PostCreate.as_form)], 
                 image:Optional[UploadFile] = File(None),
                 db: Session = Depends(get_db), 
-                user=Depends(get_current_user)):
+                user: User = Depends(require_editor)):
     
     repository = PostRepository(db)
     saved = None
@@ -146,7 +147,7 @@ def create_post(post: Annotated[PostCreate, Depends(PostCreate.as_form)],
             saved = save_uploaded_file(image)
         
         image_url = saved["url"] if saved else None
-            
+        print(f"This is the user we are using here::::::: {user.email}")
         new_post = repository.create_post(
             title=post.title, 
             content=post.content, 
@@ -168,7 +169,8 @@ def create_post(post: Annotated[PostCreate, Depends(PostCreate.as_form)],
          response_model=PostPublic,
          response_description="Post updated correctly.",
          response_model_exclude_none=True)
-def update_post(post_id: int, data: PostUpdate, db: Session = Depends(get_db)):
+def update_post(post_id: int, data: PostUpdate, db: Session = Depends(get_db),
+                _editor: User = Depends(require_editor)):
     
     repository = PostRepository(db)
     post = repository.get(post_id)
@@ -190,7 +192,7 @@ def update_post(post_id: int, data: PostUpdate, db: Session = Depends(get_db)):
 
 # 204 status code is just to send the code without anything else
 @router.delete("/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_post(post_id: int, db: Session = Depends(get_db)):
+def delete_post(post_id: int, db: Session = Depends(get_db), _editor: User = Depends(require_admin)):
     repository = PostRepository(db)
     post = repository.get(post_id)
     
@@ -205,5 +207,5 @@ def delete_post(post_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Error deleting the post")
 
 @router.get("/secure")
-def secure_endpoint(token:str = Depends(oauth2_scheme)):
+def secure_endpoint(token:str = Depends(oauth2_scheme), _editor: User = Depends(require_user)):
     return {"message": "Access with token", "token_received": token}

@@ -68,7 +68,7 @@ class PostRepository:
         return self.db.execute(post_list).scalars().all()
     
     def ensure_author(self, name:str, email:str) -> AuthorORM:
-        
+        print(f"THIS IS THE AUTHOR VARIABLES COMING HERE::::::::::: {name} - {email}")
         author_obj = self.db.execute(
             select(AuthorORM).where(AuthorORM.email == email)
         ).scalar_one_or_none()
@@ -111,7 +111,8 @@ class PostRepository:
         
         author_obj = None
         if author:
-            author_obj = self.ensure_author(author['username'], author['email'])
+            # author_obj = self.ensure_author(author['full_name'], author['email'])
+            author_obj = self.ensure_author(author.full_name, author.email)
         
         post = PostORM(title=title, content=content, image_url=image_url, author=author_obj)
         
