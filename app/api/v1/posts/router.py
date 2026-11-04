@@ -147,11 +147,11 @@ def create_post(post: Annotated[PostCreate, Depends(PostCreate.as_form)],
             saved = save_uploaded_file(image)
         
         image_url = saved["url"] if saved else None
-        print(f"This is the user we are using here::::::: {user.email}")
         new_post = repository.create_post(
             title=post.title, 
             content=post.content, 
             author=user,
+            category_id=post.category_id,
             tags=[tag.model_dump() for tag in post.tags],
             image_url=image_url
             )
