@@ -2,6 +2,9 @@ from typing import Optional, List, Literal, Annotated
 from pydantic import BaseModel, Field, field_validator, EmailStr, ConfigDict
 from fastapi import Form
 
+from app.api.v1.auth.schemas import UserPublic
+from app.api.v1.categories.schemas import CategoryPublic
+
 class Tag(BaseModel):
     name: str = Field(
         ...,
@@ -28,8 +31,9 @@ class PostBase(BaseModel):
     content: str
     # This creates an empty list
     tags: Optional[List[Tag]] = Field(default_factory=list)
-    author: Optional[Author] = None
+    user: Optional[UserPublic] = None
     image_url: Optional[str] = None
+    category: Optional[CategoryPublic] = None
     
     model_config = ConfigDict(from_attributes=True)
     
@@ -47,6 +51,7 @@ class PostCreate(BaseModel):
         description="Content post with min length 10 characters",
         examples=["This is a content valid for this field"]
     )
+    category_id: Optional[int] = None
     tags: List[Tag] = Field(default_factory=list)
     # author: Optional[Author] = None
     
@@ -64,6 +69,7 @@ class PostCreate(BaseModel):
         cls,
         title: Annotated[str, Form(min_length=3)],
         content: Annotated[str, Form(min_length=10)],
+        category_id: Annotated[int, Form(ge=1)],
         tags: Annotated[Optional[List[str]], Form()] = None,
     ):
         # tag_objs = []
@@ -71,8 +77,8 @@ class PostCreate(BaseModel):
         #     print(f"The tags coming here::::::: {t}")
         #     tag_objs.append(t)
         tag_objs = [Tag(name=t) for t in (tags or [])]
-        print("The tags converted:::::: ", tag_objs)
-        return cls(title=title, content=content, tags=tag_objs)
+        
+        return cls(title=title, content=content, category_id=category_id, tags=tag_objs)
 
 class PostUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=4, max_length=50)

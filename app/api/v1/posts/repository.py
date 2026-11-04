@@ -1,11 +1,12 @@
 from locale import normalize
 
-from fastapi import HTTPException
+from fastapi import Depends, HTTPException
 from typing import Optional, List, Tuple
 from sqlalchemy import select, func
 from math import ceil
 from sqlalchemy.orm import Session, selectinload, joinedload
-from app.models import PostORM, AuthorORM, TagORM
+from app.core.security import get_current_user
+from app.models import PostORM, User, TagORM
 
 class PostRepository:
     def __init__(self, db: Session):
@@ -60,26 +61,18 @@ class PostRepository:
             select(PostORM)
             .options(
                 selectinload(PostORM.tags),
-                joinedload(PostORM.author),
+                joinedload(PostORM.user),
             ).where(PostORM.tags.any(func.lower(TagORM.name).in_(normalize_tag_names)))
             .order_by(PostORM.id.asc())
             )
         
         return self.db.execute(post_list).scalars().all()
     
-    def ensure_author(self, name:str, email:str) -> AuthorORM:
-        print(f"THIS IS THE AUTHOR VARIABLES COMING HERE::::::::::: {name} - {email}")
+    def ensure_author(self, name:str, email:str) -> User:
+        
         author_obj = self.db.execute(
-            select(AuthorORM).where(AuthorORM.email == email)
+            select(User).where(User.email == email)
         ).scalar_one_or_none()
-        
-        if author_obj:
-            return author_obj
-        
-        author_obj = AuthorORM(name = name,
-                                email = email)
-        self.db.add(author_obj)
-        self.db.flush()
         
         return author_obj
     
@@ -105,16 +98,17 @@ class PostRepository:
         self, 
         title:str, 
         content:str, 
-        author:Optional[dict], 
         tags: List[dict],
-        image_url: str) -> PostORM:
+        image_url: str,
+        category_id: Optional[int],
+        author: User = Depends(get_current_user)) -> PostORM: 
         
         author_obj = None
         if author:
             # author_obj = self.ensure_author(author['full_name'], author['email'])
             author_obj = self.ensure_author(author.full_name, author.email)
         
-        post = PostORM(title=title, content=content, image_url=image_url, author=author_obj)
+        post = PostORM(title=title, content=content, image_url=image_url, user=author_obj, category_id=category_id)
         
         names = tags[0]["name"].split(",")
         for name in names:
