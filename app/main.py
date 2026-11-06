@@ -9,6 +9,8 @@ from app.api.v1.categories.router import router as category_router
 from app.api.v1.tags.router import router as tag_router
 from fastapi.staticfiles import StaticFiles
 
+from app.core.middleware import register_middleware
+
 # python3 -m venv venv
 # source venv/bin/activate
 # fastapi dev main.py
@@ -21,6 +23,7 @@ def create_app() -> FastAPI:
                   swagger_ui_parameters={"persistAuthorization": True}
                   )
     Base.metadata.create_all(bind=engine) # Dev, to create the table in case it not exists
+    register_middleware(app)
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(post_router)
     app.include_router(tag_router)
